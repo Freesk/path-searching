@@ -20,22 +20,22 @@ var isGameOver = false;
 
 var map = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-  [1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-  [1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1],
+  [1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1],
+  [1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1],
+  [1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1],
+  [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1],
+  [1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1],
+  [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1],
+  [1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1],
   [1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-  [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1],
-  [1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
   [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-  [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+  [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
   [1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1],
   [1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1],
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
@@ -130,24 +130,23 @@ function checkTheKeyEvents(){
 
   var currentX = player.x;
   var currentY = player.y;
-  var point;
+  var obj;
 
   if(keyCode === "Left") {
-    animateThePlayer({ x:currentX - CELL_STEP, y:currentY, deg:270 });
-    return;
+    obj = { x:currentX - CELL_STEP, y:currentY, deg:270 };
   }
   else if(keyCode === "Right") {
-    animateThePlayer({ x:currentX + CELL_STEP, y:currentY, deg:90 });
-    return;
+    obj = { x:currentX + CELL_STEP, y:currentY, deg:90 };
   }
   else if(keyCode === "Up") {
-    animateThePlayer({ x:currentX, y:currentY - CELL_STEP, deg:0 });
-    return;
+    obj = { x:currentX, y:currentY - CELL_STEP, deg:0 };
   }
   else if(keyCode === "Down") {
-    animateThePlayer({ x:currentX, y:currentY + CELL_STEP, deg:180 });
-    return;
+    obj = { x:currentX, y:currentY + CELL_STEP, deg:180 };
   }
+
+  animateThePlayer(obj);
+
 }
 
 function animateThePlayer(params) {
@@ -165,10 +164,10 @@ function animateThePlayer(params) {
   }
 
   target = nextStep;
+  player.x = nextStep.x;
+  player.y = nextStep.y;
 
   TweenMax.to(player.div, PLAYER_SPEED, {left:params.x, top:params.y, ease:Power0.easeNone, rotation:params.deg+"_short", overwrite:0, onComplete:function(){
-    player.x = params.x;
-    player.y = params.y;
     player.isAnimated = false;
     checkTheKeyEvents();
   }});
