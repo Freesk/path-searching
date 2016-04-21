@@ -7,12 +7,9 @@ var PLAYER_COLOR = "#F3D921";
 var ENEMY_COLOR = "#2196F3";
 var PLAYER_SPEED = 0.25;
 var ENEMY_SPEED = 0.3;
-var PLAYER_INTERVAL_VAL = 400;
-var ENEMY_INTERVAL_VAL = 500;
 var activeCells = [];
 var enemy;
 var player;
-var currentTarget;
 var target;
 var keyCode;
 var keyIsPressed = false;
@@ -206,7 +203,6 @@ Rectangle.prototype.init = function(params) {
 }
 
 function ActiveRectangle(params) {
-  var self = this;
   this.color = ACTIVE_CELL_COLOR;
   this.init(params);
   activeCells.push(this);
