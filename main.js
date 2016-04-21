@@ -5,7 +5,7 @@ var ACTIVE_CELL_COLOR = "#C2FFA3";
 var INACTIVE_CELL_COLOR = "#7A6935";
 var PLAYER_COLOR = "#F3D921";
 var ENEMY_COLOR = "#2196F3";
-var PLAYER_SPEED = 0.3;
+var PLAYER_SPEED = 0.25;
 var ENEMY_SPEED = 0.3;
 var PLAYER_INTERVAL_VAL = 400;
 var ENEMY_INTERVAL_VAL = 500;
@@ -13,11 +13,10 @@ var activeCells = [];
 var enemy;
 var player;
 var currentTarget;
-var firstMove = true;
 var target;
 var keyCode;
-var interval1;
-var interval2;
+var keyIsPressed = false;
+var isGameOver = false;
 
 var map = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -48,6 +47,7 @@ Person.prototype.init = function(params){
   this.div = document.createElement('div');
   this.x = params.x;
   this.y = params.y;
+  this.isAnimated = false;
   this.div.style.position = "absolute";
   this.div.style.left = params.x + 'px';
   this.div.style.top = params.y + 'px';
@@ -56,6 +56,20 @@ Person.prototype.init = function(params){
   this.div.style.borderRadius = "50%";
   this.div.style.backgroundColor = params.color;
   document.body.appendChild(this.div);
+  this.div.appendChild(createEye({x:10, y:10}));
+  this.div.appendChild(createEye({x:27, y:10}));
+}
+
+function createEye(params){
+  var eye = document.createElement('div');
+  eye.style.position = "absolute";
+  eye.style.left = params.x + 'px';
+  eye.style.top = params.y + 'px';
+  eye.style.width = 4 + "px";
+  eye.style.height = 4 + "px";
+  eye.style.borderRadius = "50%";
+  eye.style.backgroundColor = "#000";
+  return eye;
 }
 
 function init() {
@@ -77,68 +91,84 @@ function init() {
   window.addEventListener("keydown", keyDown);
   window.addEventListener("keyup", keyUp);
 
-  interval1 = setInterval(calculateThePathTo, ENEMY_INTERVAL_VAL);
-  interval2 = setInterval(checkTheKeyEvents, PLAYER_INTERVAL_VAL);
+  target = activeCells[activeCells.length-1];
+
+  calculateThePath();
 }
 
 function gameOver(){
-  clearInterval(interval1);
-  clearInterval(interval2);
+  isGameOver = true;
   window.removeEventListener("keydown", keyDown);
   window.removeEventListener("keyup", keyUp);
-  alert("GAME OVER :(");
+  alert("GAME OVER");
 }
 
 function keyDown(e) {
   keyCode = e.keyIdentifier;
+  if(!keyIsPressed) checkTheKeyEvents();
+  keyIsPressed = true;
 }
 
 function keyUp(e) {
+  keyIsPressed = false;
   keyCode = undefined;
 }
 
 function checkTheKeyEvents(){
 
-  if(!keyCode) return;
+  if(isGameOver) return;
+
+  if(!(keyCode === "Left" || keyCode === "Right" || keyCode === "Up" || keyCode === "Down")) {
+    keyIsPressed = false;
+    return;
+  }
+
+  if(player.isAnimated) return;
+  player.isAnimated = true;
 
   var currentX = player.x;
   var currentY = player.y;
   var point;
 
   if(keyCode === "Left") {
-    animateThePlayer({ x:currentX - CELL_STEP, y:currentY });
+    animateThePlayer({ x:currentX - CELL_STEP, y:currentY, deg:270 });
     return;
   }
   else if(keyCode === "Right") {
-    animateThePlayer({ x:currentX + CELL_STEP, y:currentY });
+    animateThePlayer({ x:currentX + CELL_STEP, y:currentY, deg:90 });
     return;
   }
   else if(keyCode === "Up") {
-    animateThePlayer({ x:currentX, y:currentY - CELL_STEP });
+    animateThePlayer({ x:currentX, y:currentY - CELL_STEP, deg:0 });
     return;
   }
   else if(keyCode === "Down") {
-    animateThePlayer({ x:currentX, y:currentY + CELL_STEP });
+    animateThePlayer({ x:currentX, y:currentY + CELL_STEP, deg:180 });
     return;
   }
 }
 
-function animateThePlayer(points) {
+function animateThePlayer(params) {
 
   function isActiveCell(element, index, array) {
-    return element.x === points.x && element.y === points.y
+    return element.x === params.x && element.y === params.y
   }
 
   var nextStep = activeCells.find(isActiveCell);
 
-  if(!nextStep) return;
+  if(!nextStep) {
+    player.isAnimated = false;
+    keyUp();
+    return;
+  }
 
   target = nextStep;
-  firstMove = false;
 
-  TweenMax.to(player.div, PLAYER_SPEED, {left:points.x, top:points.y, ease:Power0.easeNone, overwrite:0, onComplete:function(){
-    player.x = points.x;
-    player.y = points.y;
+  TweenMax.to(player.div, PLAYER_SPEED, {left:params.x, top:params.y, ease:Power0.easeNone, rotation:params.deg+"_short", overwrite:0, onComplete:function(){
+    player.x = params.x;
+    player.y = params.y;
+    player.isAnimated = false;
+    checkTheKeyEvents();
   }});
 
 }
@@ -183,9 +213,9 @@ function ActiveRectangle(params) {
 
 ActiveRectangle.prototype = Object.create(Rectangle.prototype);
 
-function calculateThePathTo() {
+function calculateThePath() {
 
-  if(firstMove) return;
+  if(isGameOver) return;
 
   var cellsList = activeCells.slice();
   var counter = 0;
@@ -200,12 +230,19 @@ function calculateThePathTo() {
   function animateTheEnemy(){
     var list = path.reverse();
     var item = list[0];
-    if(item.x === player.x && item.y === player.y) {
-      gameOver();
-    }
-    TweenMax.to(enemy.div, ENEMY_SPEED, {left:item.x, top:item.y, ease:Power0.easeNone, overwrite:0, onComplete:function(){
+    var angle;
+
+    if(item.x === player.x && item.y === player.y) gameOver();
+
+    if((enemy.x - CELL_STEP) === item.x) angle = 270;
+    else if((enemy.x + CELL_STEP) === item.x) angle = 90;
+    else if((enemy.y - CELL_STEP) === item.y) angle = 0;
+    else if((enemy.y + CELL_STEP) === item.y) angle = 180;
+
+    TweenMax.to(enemy.div, ENEMY_SPEED, {left:item.x, top:item.y, rotation:angle+"_short", ease:Power0.easeNone, overwrite:0, onComplete:function(){
       enemy.x = item.x;
       enemy.y = item.y;
+      calculateThePath();
     }});
   }
 
