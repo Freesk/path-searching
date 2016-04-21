@@ -93,6 +93,8 @@ function init() {
 
   target = activeCells[activeCells.length-1];
 
+  alert("Use keyboard arrows to move the orange ball. Run!")
+
   calculateThePath();
 }
 
