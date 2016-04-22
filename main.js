@@ -12,7 +12,6 @@ var enemy;
 var player;
 var target;
 var keyCode;
-var keyIsPressed = false;
 var isGameOver = false;
 
 var map = [
@@ -104,26 +103,18 @@ function gameOver(){
 
 function keyDown(e) {
   keyCode = e.keyIdentifier;
-  if(!keyIsPressed) checkTheKeyEvents();
-  keyIsPressed = true;
+  if(player.isAnimated) return;
+  if(!(keyCode === "Left" || keyCode === "Right" || keyCode === "Up" || keyCode === "Down")) return;
+  checkTheKeyEvents();
 }
 
 function keyUp(e) {
-  keyIsPressed = false;
   keyCode = undefined;
 }
 
 function checkTheKeyEvents(){
 
   if(isGameOver) return;
-
-  if(!(keyCode === "Left" || keyCode === "Right" || keyCode === "Up" || keyCode === "Down")) {
-    keyIsPressed = false;
-    return;
-  }
-
-  if(player.isAnimated) return;
-  player.isAnimated = true;
 
   var currentX = player.x;
   var currentY = player.y;
@@ -148,26 +139,25 @@ function checkTheKeyEvents(){
 
 function animateThePlayer(params) {
 
+  if(!params) return;
+
   function isActiveCell(element, index, array) {
-    return element.x === params.x && element.y === params.y
+    return element.x === params.x && element.y === params.y;
   }
 
   var nextStep = activeCells.find(isActiveCell);
 
-  if(!nextStep) {
-    player.isAnimated = false;
-    keyUp();
-    return;
-  }
+  if(!nextStep) return;
 
   target = nextStep;
-  player.x = nextStep.x;
-  player.y = nextStep.y;
 
-  TweenMax.to(player.div, PLAYER_SPEED, {left:params.x, top:params.y, ease:Power0.easeNone, rotation:params.deg+"_short", overwrite:0, onComplete:function(){
-    player.isAnimated = false;
-    checkTheKeyEvents();
-  }});
+  moveCharacter({
+    character:player,
+    speed:PLAYER_SPEED,
+    x:params.x,
+    y:params.y,
+    deg:params.deg
+  }, checkTheKeyEvents);
 
 }
 
@@ -210,6 +200,16 @@ function ActiveRectangle(params) {
 
 ActiveRectangle.prototype = Object.create(Rectangle.prototype);
 
+function moveCharacter(params, callback) {
+  params.character.isAnimated = true;
+  TweenMax.to(params.character.div, params.speed, {left:params.x, top:params.y, rotation:params.deg+"_short", ease:Power0.easeNone, overwrite:0, onComplete:function(){
+    params.character.isAnimated = false;
+    params.character.x = params.x;
+    params.character.y = params.y;
+    callback();
+  }});
+}
+
 function calculateThePath() {
 
   if(isGameOver) return;
@@ -227,20 +227,22 @@ function calculateThePath() {
   function animateTheEnemy(){
     var list = path.reverse();
     var item = list[0];
-    var angle;
+    var deg;
 
     if(item.x === player.x && item.y === player.y) gameOver();
 
-    if((enemy.x - CELL_STEP) === item.x) angle = 270;
-    else if((enemy.x + CELL_STEP) === item.x) angle = 90;
-    else if((enemy.y - CELL_STEP) === item.y) angle = 0;
-    else if((enemy.y + CELL_STEP) === item.y) angle = 180;
+    if((enemy.x - CELL_STEP) === item.x) deg = 270;
+    else if((enemy.x + CELL_STEP) === item.x) deg = 90;
+    else if((enemy.y - CELL_STEP) === item.y) deg = 0;
+    else if((enemy.y + CELL_STEP) === item.y) deg = 180;
 
-    TweenMax.to(enemy.div, ENEMY_SPEED, {left:item.x, top:item.y, rotation:angle+"_short", ease:Power0.easeNone, overwrite:0, onComplete:function(){
-      enemy.x = item.x;
-      enemy.y = item.y;
-      calculateThePath();
-    }});
+    moveCharacter({
+      character:enemy,
+      speed:ENEMY_SPEED,
+      x:item.x,
+      y:item.y,
+      deg:deg
+    }, calculateThePath);
   }
 
   function buildThePath() {
