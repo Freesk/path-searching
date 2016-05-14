@@ -1,1 +1,1 @@
-##An example of algorithm for finding a shortest path. JS, HTML and CSS.
+##An example of algorithm for finding the shortest path. JS, HTML and CSS.
