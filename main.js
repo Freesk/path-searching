@@ -9,14 +9,14 @@ var ENEMY_SPEED = 0.3;
 var CELL_WIDTH = 40;
 
 var activeCells = [];
-var liveObjects = [];
+var objectsArr = [];
 var enemy;
 var player;
 var target;
 var keyCode;
 var isGameOver = false;
-var canvas = document.createElement('canvas');
-var ctx = canvas.getContext('2d');
+var canvas;
+var ctx;
 var width;
 var height;
 
@@ -56,7 +56,7 @@ GameObject.prototype.draw = function() {
 }
 
 function Person(params){
-  liveObjects.push(this);
+  objectsArr.push(this);
   return this.init(params);
 }
 
@@ -79,37 +79,33 @@ Person.prototype.init = function(params) {
 
 TweenLite.ticker.addEventListener("tick", mianLoop);
 
-function moveLiveObjects() {
-  if(liveObjects.length <= 0) return;
-  liveObjects.map(function(object){
+function drawObjects() {
+  if(objectsArr.length <= 0) return;
+  objectsArr.map(function(object){
     object.draw();
   });
 }
 
 function mianLoop() {
   ctx.clearRect(0, 0, width, height);
-  moveLiveObjects();
+  drawObjects();
 }
 
 function init() {
-
+  canvas = document.createElement('canvas');
+  ctx = canvas.getContext('2d');
   document.getElementsByTagName('body')[0].appendChild(canvas);
 
-  console.log(map);
-
-  width = map[0].length * CELL_WIDTH;
-  height = map.length * CELL_WIDTH;
-
-  console.log(width + ":" + height);
-
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = width = map[0].length * CELL_WIDTH;
+  canvas.height = height = map.length * CELL_WIDTH;
 
   drawTheMap();
 
+  var playerInitialPosition = activeCells[activeCells.length-1];
+
   player = new Person({
-    x: activeCells[activeCells.length-1].x,
-    y: activeCells[activeCells.length-1].y,
+    x: playerInitialPosition.x,
+    y: playerInitialPosition.y,
     color: PLAYER_COLOR
   });
 
@@ -122,7 +118,7 @@ function init() {
   window.addEventListener("keydown", keyDown);
   window.addEventListener("keyup", keyUp);
 
-  target = activeCells[activeCells.length-1];
+  target = playerInitialPosition;
 
   alert("Use keyboard arrows to move the orange ball. Run!")
 
@@ -139,7 +135,12 @@ function gameOver(){
 function keyDown(e) {
   keyCode = e.keyIdentifier;
   if(player.isAnimated) return;
-  if(!(keyCode === "Left" || keyCode === "Right" || keyCode === "Up" || keyCode === "Down")) return;
+  if(!
+    (keyCode === "Left"  ||
+     keyCode === "Right" ||
+     keyCode === "Up"    ||
+     keyCode === "Down")
+  ) return;
   checkTheKeyEvents();
 }
 
@@ -173,17 +174,12 @@ function checkTheKeyEvents(){
 }
 
 function animateThePlayer(params) {
-
   if(!params) return;
-
   function isActiveCell(element, index, array) {
     return element.x === params.x && element.y === params.y;
   }
-
   var nextStep = activeCells.find(isActiveCell);
-
   if(!nextStep) return;
-
   target = nextStep;
 
   moveCharacter({
@@ -193,7 +189,6 @@ function animateThePlayer(params) {
     y:params.y,
     deg:params.deg
   }, checkTheKeyEvents);
-
 }
 
 function drawTheMap() {
@@ -216,7 +211,7 @@ function Rectangle(params) {
 Rectangle.prototype.init = function(params) {
   this.x = params.x;
   this.y = params.y;
-  liveObjects.push(this);
+  objectsArr.push(this);
   this.foo = function() {
     ctx.strokeStyle = BORDER_COLOR;
     ctx.beginPath();
