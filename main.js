@@ -1,18 +1,24 @@
-var CELL_SIDE = 38;
-var BORDER_THICKNESS = 1;
-var CELL_STEP = CELL_SIDE + BORDER_THICKNESS * 2;
-var ACTIVE_CELL_COLOR = "#C2FFA3";
-var INACTIVE_CELL_COLOR = "#7A6935";
+
 var PLAYER_COLOR = "#F3D921";
 var ENEMY_COLOR = "#2196F3";
+var ACTIVE_CELL_COLOR = "#C2FFA3";
+var INACTIVE_CELL_COLOR = "#7A6935";
+var BORDER_COLOR = '#C2FFA3';
 var PLAYER_SPEED = 0.25;
 var ENEMY_SPEED = 0.3;
+var CELL_WIDTH = 40;
+
 var activeCells = [];
+var liveObjects = [];
 var enemy;
 var player;
 var target;
 var keyCode;
 var isGameOver = false;
+var canvas = document.createElement('canvas');
+var ctx = canvas.getContext('2d');
+var width;
+var height;
 
 var map = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -35,40 +41,69 @@ var map = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
+function GameObject() {}
+
+GameObject.prototype.init = function() {
+  this.x = 0;
+  this.y = 0;
+}
+
+GameObject.prototype.draw = function() {
+  ctx.save();
+  ctx.translate(this.x, this.y);
+  this.foo();
+  ctx.restore();
+}
+
 function Person(params){
+  liveObjects.push(this);
   return this.init(params);
 }
 
-Person.prototype.init = function(params){
-  this.div = document.createElement('div');
+Person.prototype = Object.create(GameObject.prototype);
+
+Person.prototype.init = function(params) {
   this.x = params.x;
   this.y = params.y;
   this.isAnimated = false;
-  this.div.style.position = "absolute";
-  this.div.style.left = params.x + 'px';
-  this.div.style.top = params.y + 'px';
-  this.div.style.width = CELL_STEP + "px";
-  this.div.style.height = CELL_STEP + "px";
-  this.div.style.borderRadius = "50%";
-  this.div.style.backgroundColor = params.color;
-  document.body.appendChild(this.div);
-  this.div.appendChild(createEye({x:10, y:10}));
-  this.div.appendChild(createEye({x:27, y:10}));
+  this.foo = function() {
+    ctx.strokeStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(CELL_WIDTH/2,CELL_WIDTH/2,CELL_WIDTH/2,0,2*Math.PI);
+    ctx.fillStyle = params.color;
+    ctx.stroke();
+    ctx.fill();
+  }
+  this.draw();
 }
 
-function createEye(params){
-  var eye = document.createElement('div');
-  eye.style.position = "absolute";
-  eye.style.left = params.x + 'px';
-  eye.style.top = params.y + 'px';
-  eye.style.width = 4 + "px";
-  eye.style.height = 4 + "px";
-  eye.style.borderRadius = "50%";
-  eye.style.backgroundColor = "#000";
-  return eye;
+TweenLite.ticker.addEventListener("tick", mianLoop);
+
+function moveLiveObjects() {
+  if(liveObjects.length <= 0) return;
+  liveObjects.map(function(object){
+    object.draw();
+  });
+}
+
+function mianLoop() {
+  ctx.clearRect(0, 0, width, height);
+  moveLiveObjects();
 }
 
 function init() {
+
+  document.getElementsByTagName('body')[0].appendChild(canvas);
+
+  console.log(map);
+
+  width = map[0].length * CELL_WIDTH;
+  height = map.length * CELL_WIDTH;
+
+  console.log(width + ":" + height);
+
+  canvas.width = width;
+  canvas.height = height;
 
   drawTheMap();
 
@@ -121,16 +156,16 @@ function checkTheKeyEvents(){
   var obj;
 
   if(keyCode === "Left") {
-    obj = { x:currentX - CELL_STEP, y:currentY, deg:270 };
+    obj = { x:currentX - CELL_WIDTH, y:currentY, deg:270 };
   }
   else if(keyCode === "Right") {
-    obj = { x:currentX + CELL_STEP, y:currentY, deg:90 };
+    obj = { x:currentX + CELL_WIDTH, y:currentY, deg:90 };
   }
   else if(keyCode === "Up") {
-    obj = { x:currentX, y:currentY - CELL_STEP, deg:0 };
+    obj = { x:currentX, y:currentY - CELL_WIDTH, deg:0 };
   }
   else if(keyCode === "Down") {
-    obj = { x:currentX, y:currentY + CELL_STEP, deg:180 };
+    obj = { x:currentX, y:currentY + CELL_WIDTH, deg:180 };
   }
 
   animateThePlayer(obj);
@@ -164,37 +199,38 @@ function animateThePlayer(params) {
 function drawTheMap() {
   for (var a = 0; a < map.length; a++) {
     for (var b = 0; b < map[a].length; b++) {
-      var position = {
-        x: CELL_STEP * b,
-        y: CELL_STEP * a
-      };
-      map[a][b] === 1 ? new Rectangle(position) : new ActiveRectangle(position);
+      var position = { x: CELL_WIDTH * b, y: CELL_WIDTH * a };
+      map[a][b] ? new Rectangle(position) : new ActiveRectangle(position);
     }
   }
 }
 
+Rectangle.prototype = Object.create(GameObject.prototype);
+
 function Rectangle(params) {
   this.color = INACTIVE_CELL_COLOR;
   this.init(params);
+  this.draw();
 }
 
 Rectangle.prototype.init = function(params) {
   this.x = params.x;
   this.y = params.y;
-  this.div = document.createElement('div');
-  this.div.style.width = CELL_SIDE + "px";
-  this.div.style.height = CELL_SIDE + "px";
-  this.div.style.backgroundColor = this.color;
-  this.div.style.position = "absolute";
-  this.div.style.border = BORDER_THICKNESS+"px solid #ffffff";
-  this.div.style.top = params.y + "px";
-  this.div.style.left = params.x + "px";
-  document.body.appendChild(this.div);
+  liveObjects.push(this);
+  this.foo = function() {
+    ctx.strokeStyle = BORDER_COLOR;
+    ctx.beginPath();
+    ctx.rect(0, 0, 150, 100);
+    ctx.fillStyle = this.color;
+    ctx.stroke();
+    ctx.fill();
+  }
 }
 
 function ActiveRectangle(params) {
   this.color = ACTIVE_CELL_COLOR;
   this.init(params);
+  this.draw();
   activeCells.push(this);
 }
 
@@ -202,12 +238,19 @@ ActiveRectangle.prototype = Object.create(Rectangle.prototype);
 
 function moveCharacter(params, callback) {
   params.character.isAnimated = true;
-  TweenMax.to(params.character.div, params.speed, {left:params.x, top:params.y, rotation:params.deg+"_short", ease:Power0.easeNone, overwrite:0, onComplete:function(){
-    params.character.isAnimated = false;
-    params.character.x = params.x;
-    params.character.y = params.y;
-    callback();
-  }});
+  TweenMax.to(params.character, params.speed, {
+    x:params.x,
+    y:params.y,
+    // rotation:params.deg+"_short",
+    ease:Power0.easeNone,
+    overwrite:0,
+    onComplete:function(){
+      params.character.isAnimated = false;
+      params.character.x = params.x;
+      params.character.y = params.y;
+      callback();
+    }
+  });
 }
 
 function calculateThePath() {
@@ -231,10 +274,10 @@ function calculateThePath() {
 
     if(item.x === player.x && item.y === player.y) gameOver();
 
-    if((enemy.x - CELL_STEP) === item.x) deg = 270;
-    else if((enemy.x + CELL_STEP) === item.x) deg = 90;
-    else if((enemy.y - CELL_STEP) === item.y) deg = 0;
-    else if((enemy.y + CELL_STEP) === item.y) deg = 180;
+    if((enemy.x - CELL_WIDTH) === item.x) deg = 270;
+    else if((enemy.x + CELL_WIDTH) === item.x) deg = 90;
+    else if((enemy.y - CELL_WIDTH) === item.y) deg = 0;
+    else if((enemy.y + CELL_WIDTH) === item.y) deg = 180;
 
     moveCharacter({
       character:enemy,
@@ -247,7 +290,7 @@ function calculateThePath() {
 
   function buildThePath() {
     var currentCell;
-    var testList = sortCells(cells);
+    var testList = sortCells(cells); // sort by step number
     var counter = cellsList.length;
 
     path.push(testList[testList.indexOf(target)]);
@@ -313,15 +356,15 @@ function calculateThePath() {
   function match(step, target) {
     if (step.x === target.x && step.y === target.y) return false;
     return (
-      (step.x === target.x && (step.y === target.y + CELL_STEP || step.y === target.y - CELL_STEP)) ||
-      (step.x === target.x + CELL_STEP && step.y === target.y) ||
-      (step.x === target.x - CELL_STEP && step.y === target.y)
+      (step.x === target.x && (step.y === target.y + CELL_WIDTH || step.y === target.y - CELL_WIDTH)) ||
+      (step.x === target.x + CELL_WIDTH && step.y === target.y) ||
+      (step.x === target.x - CELL_WIDTH && step.y === target.y)
     );
   }
 
 }
 
-function sortCells(arr) {
+function sortCells(arr) { // sort by step number
   return arr.sort(function(a, b){
     var keyA = a.id,
         keyB = b.id;
