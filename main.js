@@ -15,8 +15,8 @@ var player;
 var target;
 var keyCode;
 var isGameOver = false;
-var canvas;
-var ctx;
+var canvas = document.createElement('canvas');
+var ctx = canvas.getContext('2d');
 var width;
 var height;
 
@@ -92,8 +92,6 @@ function mianLoop() {
 }
 
 function init() {
-  canvas = document.createElement('canvas');
-  ctx = canvas.getContext('2d');
   document.getElementsByTagName('body')[0].appendChild(canvas);
 
   canvas.width = width = map[0].length * CELL_WIDTH;
