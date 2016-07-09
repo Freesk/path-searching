@@ -14,11 +14,10 @@ var player;
 var target;
 var keyCode;
 var isGameOver = false;
-var canvas = document.createElement('canvas');
-var ctx = canvas.getContext('2d');
+var canvas;
+var ctx;
 var width;
 var height;
-var playerMovement;
 
 var map = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -65,44 +64,17 @@ Person.prototype = Object.create(GameObject.prototype);
 Person.prototype.init = function(params) {
   this.x = params.x;
   this.y = params.y;
-  this.angle = 0;
+  this.angle = params.angle;
   this.speed = params.speed;
   this.isAnimated = false;
   this.foo = function() {
-
-    var canvas1 = document.createElement('canvas');
-    canvas1.width = CELL_WIDTH;
-    canvas1.height = CELL_WIDTH;
-    var ctx2 = canvas1.getContext('2d');
-    ctx2.save();
-    ctx2.translate(CELL_WIDTH/2, CELL_WIDTH/2);
-    ctx2.rotate(this.angle * Math.PI/180);
-    ctx2.strokeStyle = "#fff";
-    ctx2.beginPath();
-    ctx2.arc(0, 0, CELL_WIDTH/2, 0*Math.PI, 1*Math.PI);
-    ctx2.fillStyle = params.color;
-    ctx2.stroke();
-    ctx2.fill();
-    ctx2.restore();
-
-    var canvas2 = document.createElement('canvas');
-    canvas2.width = CELL_WIDTH;
-    canvas2.height = CELL_WIDTH;
-    var ctx3 = canvas2.getContext('2d');
-    ctx3.save();
-    ctx3.translate(CELL_WIDTH/2, CELL_WIDTH/2);
-    ctx3.rotate(this.angle * Math.PI/180);
-    ctx3.strokeStyle = "#fff";
-    ctx3.beginPath();
-    ctx3.arc(0, 0, CELL_WIDTH/2, 0.5*Math.PI, 1.5*Math.PI);
-    ctx3.fillStyle = params.color;
-    ctx3.stroke();
-    ctx3.fill();
-    ctx3.restore();
-
-    ctx.drawImage(canvas1, 0, 0);
-    ctx.drawImage(canvas2, 0, 0);
-
+    ctx.translate(CELL_WIDTH/2, CELL_WIDTH/2);
+    ctx.strokeStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(0, 0, CELL_WIDTH/2, 0, 2 * Math.PI);
+    ctx.fillStyle = params.color;
+    ctx.stroke();
+    ctx.fill();
   }
   this.draw();
 }
@@ -110,14 +82,11 @@ Person.prototype.init = function(params) {
 Person.prototype.move = function(params) {
   var that = this;
   var callback = params.callback || function() {};
-  var degShift = 45;
   that.isAnimated = true;
   TweenMax.to(that, that.speed, {
-    x:params.x,
-    y:params.y,
-    angle:params.deg + degShift + "_short",
-    ease:Power0.easeNone,
-    overwrite:0,
+    x: params.x,
+    y: params.y,
+    ease: Power0.easeNone,
     onComplete:function(){
       that.isAnimated = false;
       that.x = params.x;
@@ -135,12 +104,13 @@ function drawObjects() {
 }
 
 function init() {
-  document.getElementsByTagName('body')[0].appendChild(canvas);
-
+  canvas = document.createElement('canvas');
   canvas.width = width = map[0].length * CELL_WIDTH;
   canvas.height = height = map.length * CELL_WIDTH;
+  document.getElementsByTagName('body')[0].appendChild(canvas);
+  ctx = canvas.getContext('2d');
 
-  drawTheMap();
+  createMapObjects();
 
   var playerInitialPosition = activeCells[activeCells.length-1];
 
@@ -166,7 +136,6 @@ function init() {
 
   alert("Use keyboard arrows to move the orange ball. Run!")
 
-  animateThePlayer();
   calculateThePath();
 }
 
@@ -180,8 +149,17 @@ function gameOver(){
   isGameOver = true;
   window.removeEventListener("keydown", keyDown);
   window.removeEventListener("keyup", keyUp);
-  TweenLite.ticker.removeEventListener("tick", mianLoop);
+  keyUp();
   alert("GAME OVER");
+  enemy.move({
+    x: player.x,
+    y: player.y,
+    callback: killTheLoop
+  });
+}
+
+function killTheLoop() {
+  TweenLite.ticker.removeEventListener("tick", mianLoop);
 }
 
 function keyDown(e) {
@@ -192,46 +170,46 @@ function keyDown(e) {
 
 function keyUp(e) {
   keyCode = undefined;
-  playerMovement = undefined;
 }
 
 function checkTheKeyEvent(){
+  if(!keyCode) return;
   var currentX = player.x;
   var currentY = player.y;
+  var nextX;
+  var nextY;
   if(keyCode === "Left") {
-    playerMovement = { x:currentX - CELL_WIDTH, y:currentY, deg:270 };
+    nextX = currentX - CELL_WIDTH;
+    nextY = currentY;
   } else if(keyCode === "Right") {
-    playerMovement = { x:currentX + CELL_WIDTH, y:currentY, deg:90 };
+    nextX = currentX + CELL_WIDTH;
+    nextY = currentY;
   } else if(keyCode === "Up") {
-    playerMovement = { x:currentX, y:currentY - CELL_WIDTH, deg:0 };
+    nextX = currentX;
+    nextY = currentY - CELL_WIDTH;
   } else if(keyCode === "Down") {
-    playerMovement = { x:currentX, y:currentY + CELL_WIDTH, deg:180 };
+    nextX = currentX;
+    nextY = currentY + CELL_WIDTH;
   }
-  animateThePlayer();
+  animateThePlayer({ x:nextX, y:nextY });
 }
 
-function animateThePlayer() {
-
-  if(!playerMovement) return;
-
-  function isActiveCell(element) {
-    return isTheSamePosition(element, playerMovement);
-  }
-
-  var nextStep = activeCells.find(isActiveCell);
+function animateThePlayer(nextPosition) {
+  if(!nextPosition) return;
+  var nextStep = activeCells.find(function(item){
+    return isTheSamePosition(item, nextPosition);
+  });
   if(!nextStep) return;
-
+  // point enemy to this position
   target = nextStep;
-
   player.move({
-    x: playerMovement.x,
-    y: playerMovement.y,
-    deg: playerMovement.deg,
+    x: nextStep.x,
+    y: nextStep.y,
     callback:animateThePlayer
   });
 }
 
-function drawTheMap() {
+function createMapObjects() {
   for (var a = 0; a < map.length; a++) {
     for (var b = 0; b < map[a].length; b++) {
       var position = { x: CELL_WIDTH * b, y: CELL_WIDTH * a };
@@ -271,28 +249,12 @@ function ActiveRectangle(params) {
 
 ActiveRectangle.prototype = Object.create(Rectangle.prototype);
 
-function moveCharacter(params, callback) {
-  params.character.isAnimated = true;
-  TweenMax.to(params.character, params.speed, {
-    x:params.x,
-    y:params.y,
-    // rotation:params.deg+"_short",
-    ease:Power0.easeNone,
-    overwrite:0,
-    onComplete:function(){
-      params.character.isAnimated = false;
-      params.character.x = params.x;
-      params.character.y = params.y;
-      callback();
-    }
-  });
-}
-
 function calculateThePath() {
 
   if(isGameOver) return;
 
-  var cellsList = activeCells.slice(); // create a copy of activeCells
+  // create a copy of activeCells
+  var cellsList = activeCells.slice();
   var counter = 0;
   var steps = [];
   var cells = [];
@@ -325,33 +287,24 @@ function calculateThePath() {
   animateTheEnemy();
 
   function animateTheEnemy(){
-    var list = path.reverse();
-    var item = list[0];
-    var deg;
-
-    if(isTheSamePosition(item, player)) gameOver();
-
-    if     ((enemy.x - CELL_WIDTH) === item.x) deg = 270;
-    else if((enemy.x + CELL_WIDTH) === item.x) deg = 90;
-    else if((enemy.y - CELL_WIDTH) === item.y) deg = 0;
-    else if((enemy.y + CELL_WIDTH) === item.y) deg = 180;
-
+    var nextStep = path[path.length-1];
+    if(isTheSamePosition(nextStep, player)) gameOver();
     enemy.move({
-      x: item.x,
-      y: item.y,
-      deg: deg,
+      x: nextStep.x,
+      y: nextStep.y,
       callback: calculateThePath
     });
-
   }
 
   function buildThePath() {
     var currentCell;
-    var testList = sortCells(cells); // sort by step number
+    // sort by step number
+    var testList = sortCells(cells);
     var counter = cellsList.length;
     var testCell;
 
-    path.push(testList[testList.indexOf(target)]); // push the last elemnt
+    // push the last elemnt
+    path.push(testList[testList.indexOf(target)]);
 
     currentCell = path[0];
 
@@ -376,20 +329,23 @@ function calculateThePath() {
 
 }
 
-function isTheSamePosition(object1, object2) {
-  return object1.x === object2.x && object1.y === object2.y;
+function isTheSamePosition(pos1, pos2) {
+  return pos1.x === pos2.x && pos1.y === pos2.y;
 }
 
-function checkIfCanGoThere(step, target) { // return true if available for the next step
-  if (isTheSamePosition(step, target)) return false;
+// return true if available for the next step
+function checkIfCanGoThere(currentStep, nextStep) {
+  // maybe usefull?
+  // if (isTheSamePosition(currentStep, nextStep)) return false;
   return (
-    (step.x === target.x && (step.y === target.y + CELL_WIDTH || step.y === target.y - CELL_WIDTH)) ||
-    (step.x === target.x + CELL_WIDTH && step.y === target.y) ||
-    (step.x === target.x - CELL_WIDTH && step.y === target.y)
+    (currentStep.x == nextStep.x && (currentStep.y == nextStep.y + CELL_WIDTH || currentStep.y === nextStep.y - CELL_WIDTH)) ||
+    (currentStep.x == nextStep.x + CELL_WIDTH && currentStep.y == nextStep.y) ||
+    (currentStep.x == nextStep.x - CELL_WIDTH && currentStep.y == nextStep.y)
   );
 }
 
-function sortCells(arr) { // sort by step number
+// sort by step number
+function sortCells(arr) {
   return arr.sort(function(a, b){
     var keyA = a.id,
         keyB = b.id;
