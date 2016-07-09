@@ -1,4 +1,3 @@
-
 var PLAYER_COLOR = "#F3D921";
 var ENEMY_COLOR = "#2196F3";
 var ACTIVE_CELL_COLOR = "#C2FFA3";
@@ -19,6 +18,7 @@ var canvas = document.createElement('canvas');
 var ctx = canvas.getContext('2d');
 var width;
 var height;
+var playerMovement;
 
 var map = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -65,30 +65,73 @@ Person.prototype = Object.create(GameObject.prototype);
 Person.prototype.init = function(params) {
   this.x = params.x;
   this.y = params.y;
+  this.angle = 0;
+  this.speed = params.speed;
   this.isAnimated = false;
   this.foo = function() {
-    ctx.strokeStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(CELL_WIDTH/2,CELL_WIDTH/2,CELL_WIDTH/2,0,2*Math.PI);
-    ctx.fillStyle = params.color;
-    ctx.stroke();
-    ctx.fill();
+
+    var canvas1 = document.createElement('canvas');
+    canvas1.width = CELL_WIDTH;
+    canvas1.height = CELL_WIDTH;
+    var ctx2 = canvas1.getContext('2d');
+    ctx2.save();
+    ctx2.translate(CELL_WIDTH/2, CELL_WIDTH/2);
+    ctx2.rotate(this.angle * Math.PI/180);
+    ctx2.strokeStyle = "#fff";
+    ctx2.beginPath();
+    ctx2.arc(0, 0, CELL_WIDTH/2, 0*Math.PI, 1*Math.PI);
+    ctx2.fillStyle = params.color;
+    ctx2.stroke();
+    ctx2.fill();
+    ctx2.restore();
+
+    var canvas2 = document.createElement('canvas');
+    canvas2.width = CELL_WIDTH;
+    canvas2.height = CELL_WIDTH;
+    var ctx3 = canvas2.getContext('2d');
+    ctx3.save();
+    ctx3.translate(CELL_WIDTH/2, CELL_WIDTH/2);
+    ctx3.rotate(this.angle * Math.PI/180);
+    ctx3.strokeStyle = "#fff";
+    ctx3.beginPath();
+    ctx3.arc(0, 0, CELL_WIDTH/2, 0.5*Math.PI, 1.5*Math.PI);
+    ctx3.fillStyle = params.color;
+    ctx3.stroke();
+    ctx3.fill();
+    ctx3.restore();
+
+    ctx.drawImage(canvas1, 0, 0);
+    ctx.drawImage(canvas2, 0, 0);
+
   }
   this.draw();
 }
 
-TweenLite.ticker.addEventListener("tick", mianLoop);
+Person.prototype.move = function(params) {
+  var that = this;
+  var callback = params.callback || function() {};
+  var degShift = 45;
+  that.isAnimated = true;
+  TweenMax.to(that, that.speed, {
+    x:params.x,
+    y:params.y,
+    angle:params.deg + degShift + "_short",
+    ease:Power0.easeNone,
+    overwrite:0,
+    onComplete:function(){
+      that.isAnimated = false;
+      that.x = params.x;
+      that.y = params.y;
+      callback();
+    }
+  });
+}
 
 function drawObjects() {
   if(objectsArr.length <= 0) return;
   objectsArr.map(function(object){
     object.draw();
   });
-}
-
-function mianLoop() {
-  ctx.clearRect(0, 0, width, height);
-  drawObjects();
 }
 
 function init() {
@@ -104,89 +147,88 @@ function init() {
   player = new Person({
     x: playerInitialPosition.x,
     y: playerInitialPosition.y,
-    color: PLAYER_COLOR
+    color: PLAYER_COLOR,
+    speed: PLAYER_SPEED
   });
 
   enemy = new Person({
     x: activeCells[0].x,
     y: activeCells[0].y,
-    color: ENEMY_COLOR
+    color: ENEMY_COLOR,
+    speed: ENEMY_SPEED
   });
 
   window.addEventListener("keydown", keyDown);
   window.addEventListener("keyup", keyUp);
+  TweenLite.ticker.addEventListener("tick", mianLoop);
 
   target = playerInitialPosition;
 
   alert("Use keyboard arrows to move the orange ball. Run!")
 
+  animateThePlayer();
   calculateThePath();
+}
+
+function mianLoop() {
+  ctx.clearRect(0, 0, width, height);
+  drawObjects();
+  checkTheKeyEvent();
 }
 
 function gameOver(){
   isGameOver = true;
   window.removeEventListener("keydown", keyDown);
   window.removeEventListener("keyup", keyUp);
+  TweenLite.ticker.removeEventListener("tick", mianLoop);
   alert("GAME OVER");
 }
 
 function keyDown(e) {
   keyCode = e.keyIdentifier;
-  if(player.isAnimated) return;
-  if(!
-    (keyCode === "Left"  ||
-     keyCode === "Right" ||
-     keyCode === "Up"    ||
-     keyCode === "Down")
-  ) return;
-  checkTheKeyEvents();
+  if(['Left', 'Right', 'Up', 'Down'].indexOf(keyCode) < 0) return;
+  checkTheKeyEvent();
 }
 
 function keyUp(e) {
   keyCode = undefined;
+  playerMovement = undefined;
 }
 
-function checkTheKeyEvents(){
-
-  if(isGameOver) return;
-
+function checkTheKeyEvent(){
   var currentX = player.x;
   var currentY = player.y;
-  var obj;
-
   if(keyCode === "Left") {
-    obj = { x:currentX - CELL_WIDTH, y:currentY, deg:270 };
+    playerMovement = { x:currentX - CELL_WIDTH, y:currentY, deg:270 };
+  } else if(keyCode === "Right") {
+    playerMovement = { x:currentX + CELL_WIDTH, y:currentY, deg:90 };
+  } else if(keyCode === "Up") {
+    playerMovement = { x:currentX, y:currentY - CELL_WIDTH, deg:0 };
+  } else if(keyCode === "Down") {
+    playerMovement = { x:currentX, y:currentY + CELL_WIDTH, deg:180 };
   }
-  else if(keyCode === "Right") {
-    obj = { x:currentX + CELL_WIDTH, y:currentY, deg:90 };
-  }
-  else if(keyCode === "Up") {
-    obj = { x:currentX, y:currentY - CELL_WIDTH, deg:0 };
-  }
-  else if(keyCode === "Down") {
-    obj = { x:currentX, y:currentY + CELL_WIDTH, deg:180 };
-  }
-
-  animateThePlayer(obj);
-
+  animateThePlayer();
 }
 
-function animateThePlayer(params) {
-  if(!params) return;
-  function isActiveCell(element, index, array) {
-    return element.x === params.x && element.y === params.y;
+function animateThePlayer() {
+
+  if(!playerMovement) return;
+
+  function isActiveCell(element) {
+    return isTheSamePosition(element, playerMovement);
   }
+
   var nextStep = activeCells.find(isActiveCell);
   if(!nextStep) return;
+
   target = nextStep;
 
-  moveCharacter({
-    character:player,
-    speed:PLAYER_SPEED,
-    x:params.x,
-    y:params.y,
-    deg:params.deg
-  }, checkTheKeyEvents);
+  player.move({
+    x: playerMovement.x,
+    y: playerMovement.y,
+    deg: playerMovement.deg,
+    callback:animateThePlayer
+  });
 }
 
 function drawTheMap() {
@@ -209,7 +251,6 @@ function Rectangle(params) {
 Rectangle.prototype.init = function(params) {
   this.x = params.x;
   this.y = params.y;
-  objectsArr.push(this);
   this.foo = function() {
     ctx.strokeStyle = BORDER_COLOR;
     ctx.beginPath();
@@ -218,6 +259,7 @@ Rectangle.prototype.init = function(params) {
     ctx.stroke();
     ctx.fill();
   }
+  objectsArr.push(this);
 }
 
 function ActiveRectangle(params) {
@@ -250,13 +292,35 @@ function calculateThePath() {
 
   if(isGameOver) return;
 
-  var cellsList = activeCells.slice();
+  var cellsList = activeCells.slice(); // create a copy of activeCells
   var counter = 0;
   var steps = [];
   var cells = [];
   var path = [];
+  var step;
 
-  loop();
+  while(cellsList.length !== 0) {
+    for (var i = 0; i < cellsList.length; i++) {
+      step = cellsList[i];
+      steps[counter] = steps[counter] || [];
+      if (steps.length <= 1 ) {
+        if (checkIfCanGoThere(step, enemy)) pushElem(step);
+      } else {
+        for (var a = 0; a < steps[counter-1].length; a++) {
+          if (checkIfCanGoThere(step, steps[counter-1][a])) pushElem(step);
+        }
+      }
+    }
+
+    // Remvoe from the to do list
+    steps[counter].map(function(item){
+      for(var i = 0; i < cellsList.length; i++)
+        if(item === cellsList[i]) cellsList.splice(i, 1);
+    });
+
+    counter++;
+  }
+
   buildThePath();
   animateTheEnemy();
 
@@ -265,79 +329,43 @@ function calculateThePath() {
     var item = list[0];
     var deg;
 
-    if(item.x === player.x && item.y === player.y) gameOver();
+    if(isTheSamePosition(item, player)) gameOver();
 
-    if((enemy.x - CELL_WIDTH) === item.x) deg = 270;
+    if     ((enemy.x - CELL_WIDTH) === item.x) deg = 270;
     else if((enemy.x + CELL_WIDTH) === item.x) deg = 90;
     else if((enemy.y - CELL_WIDTH) === item.y) deg = 0;
     else if((enemy.y + CELL_WIDTH) === item.y) deg = 180;
 
-    moveCharacter({
-      character:enemy,
-      speed:ENEMY_SPEED,
-      x:item.x,
-      y:item.y,
-      deg:deg
-    }, calculateThePath);
+    enemy.move({
+      x: item.x,
+      y: item.y,
+      deg: deg,
+      callback: calculateThePath
+    });
+
   }
 
   function buildThePath() {
     var currentCell;
     var testList = sortCells(cells); // sort by step number
     var counter = cellsList.length;
+    var testCell;
 
-    path.push(testList[testList.indexOf(target)]);
+    path.push(testList[testList.indexOf(target)]); // push the last elemnt
+
     currentCell = path[0];
 
-    loop();
-
-    function loop(){
-      for (var i = 0; i < testList.length; i++) {
-        var cell = testList[i];
-        if(cell.id+1 === currentCell.id && match(cell, currentCell)) {
-          path.push(cell);
-          currentCell = cell;
+    while(true) {
+      for(var i = 0; i < testList.length; i++) {
+        testCell = testList[i];
+        if(testCell.id + 1 === currentCell.id && checkIfCanGoThere(testCell, currentCell)) {
+          path.push(testCell);
+          currentCell = testCell;
         }
       }
-
-      if((currentCell.x === enemy.x && currentCell.y === enemy.y) || counter < 1) return;
-
+      if(isTheSamePosition(currentCell, enemy) || counter < 1) break;
       counter--;
-      loop();
     }
-  }
-
-  function removeFromList(step) {
-    for (var i = 0; i < cellsList.length; i++) {
-      if(cellsList[i] === step) cellsList.splice(i, 1);
-    }
-  }
-
-  function loop() {
-
-    if(cellsList.length === 0) return;
-
-    for (var i = 0; i < cellsList.length; i++) {
-      var step = cellsList[i];
-      steps[counter] = steps[counter] || [];
-
-      if (steps.length <= 1 ) {
-        if (match(step, enemy)) pushElem(step);
-      }
-      else {
-        for (var a = 0; a < steps[counter-1].length; a++) {
-          if (match(step, steps[counter-1][a])) pushElem(step);
-        }
-      }
-    }
-
-    for (var b = 0; b < steps[counter].length; b++) {
-      removeFromList(steps[counter][b]);
-    }
-
-    counter++;
-    loop();
-
   }
 
   function pushElem(step){
@@ -346,15 +374,19 @@ function calculateThePath() {
     step.id = counter;
   }
 
-  function match(step, target) {
-    if (step.x === target.x && step.y === target.y) return false;
-    return (
-      (step.x === target.x && (step.y === target.y + CELL_WIDTH || step.y === target.y - CELL_WIDTH)) ||
-      (step.x === target.x + CELL_WIDTH && step.y === target.y) ||
-      (step.x === target.x - CELL_WIDTH && step.y === target.y)
-    );
-  }
+}
 
+function isTheSamePosition(object1, object2) {
+  return object1.x === object2.x && object1.y === object2.y;
+}
+
+function checkIfCanGoThere(step, target) { // return true if available for the next step
+  if (isTheSamePosition(step, target)) return false;
+  return (
+    (step.x === target.x && (step.y === target.y + CELL_WIDTH || step.y === target.y - CELL_WIDTH)) ||
+    (step.x === target.x + CELL_WIDTH && step.y === target.y) ||
+    (step.x === target.x - CELL_WIDTH && step.y === target.y)
+  );
 }
 
 function sortCells(arr) { // sort by step number
