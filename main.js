@@ -4,7 +4,7 @@ var ACTIVE_CELL_COLOR = "#C2FFA3";
 var INACTIVE_CELL_COLOR = "#7A6935";
 var BORDER_COLOR = '#C2FFA3';
 var PLAYER_SPEED = 0.25;
-var ENEMY_SPEED = 0.3;
+var ENEMY_SPEED = 0.35;
 var CELL_WIDTH = 40;
 
 var activeCells = [];
@@ -66,7 +66,6 @@ Person.prototype.init = function(params) {
   this.y = params.y;
   this.angle = params.angle;
   this.speed = params.speed;
-  this.isAnimated = false;
   this.foo = function() {
     ctx.translate(CELL_WIDTH/2, CELL_WIDTH/2);
     ctx.strokeStyle = "#fff";
@@ -82,13 +81,11 @@ Person.prototype.init = function(params) {
 Person.prototype.move = function(params) {
   var that = this;
   var callback = params.callback || function() {};
-  that.isAnimated = true;
   TweenMax.to(that, that.speed, {
     x: params.x,
     y: params.y,
     ease: Power0.easeNone,
-    onComplete:function(){
-      that.isAnimated = false;
+    onComplete:function() {
       that.x = params.x;
       that.y = params.y;
       callback();
@@ -98,6 +95,7 @@ Person.prototype.move = function(params) {
 
 function drawObjects() {
   if(objectsArr.length <= 0) return;
+  ctx.clearRect(0, 0, width, height);
   objectsArr.map(function(object){
     object.draw();
   });
@@ -107,12 +105,15 @@ function init() {
   canvas = document.createElement('canvas');
   canvas.width = width = map[0].length * CELL_WIDTH;
   canvas.height = height = map.length * CELL_WIDTH;
-  document.getElementsByTagName('body')[0].appendChild(canvas);
   ctx = canvas.getContext('2d');
+
+  document.getElementsByTagName('body')[0].appendChild(canvas);
 
   createMapObjects();
 
   var playerInitialPosition = activeCells[activeCells.length-1];
+
+  target = playerInitialPosition;
 
   player = new Person({
     x: playerInitialPosition.x,
@@ -130,17 +131,14 @@ function init() {
 
   window.addEventListener("keydown", keyDown);
   window.addEventListener("keyup", keyUp);
-  TweenLite.ticker.addEventListener("tick", mianLoop);
-
-  target = playerInitialPosition;
+  TweenLite.ticker.addEventListener("tick", onEnterFrame);
 
   alert("Use keyboard arrows to move the orange ball. Run!")
 
   calculateThePath();
 }
 
-function mianLoop() {
-  ctx.clearRect(0, 0, width, height);
+function onEnterFrame() {
   drawObjects();
   checkTheKeyEvent();
 }
@@ -149,23 +147,18 @@ function gameOver(){
   isGameOver = true;
   window.removeEventListener("keydown", keyDown);
   window.removeEventListener("keyup", keyUp);
-  keyUp();
-  alert("GAME OVER");
   enemy.move({
     x: player.x,
-    y: player.y,
-    callback: killTheLoop
+    y: player.y
   });
-}
-
-function killTheLoop() {
-  TweenLite.ticker.removeEventListener("tick", mianLoop);
+  setTimeout(function(){
+    TweenLite.ticker.removeEventListener("tick", onEnterFrame);
+    alert("GAME OVER");
+  }, ENEMY_SPEED*1000)
 }
 
 function keyDown(e) {
   keyCode = e.keyIdentifier;
-  if(['Left', 'Right', 'Up', 'Down'].indexOf(keyCode) < 0) return;
-  checkTheKeyEvent();
 }
 
 function keyUp(e) {
@@ -173,7 +166,6 @@ function keyUp(e) {
 }
 
 function checkTheKeyEvent(){
-  if(!keyCode) return;
   var currentX = player.x;
   var currentY = player.y;
   var nextX;
@@ -190,12 +182,13 @@ function checkTheKeyEvent(){
   } else if(keyCode === "Down") {
     nextX = currentX;
     nextY = currentY + CELL_WIDTH;
-  }
+  } else return;
   animateThePlayer({ x:nextX, y:nextY });
 }
 
 function animateThePlayer(nextPosition) {
   if(!nextPosition) return;
+  // check the next step for being not a wall
   var nextStep = activeCells.find(function(item){
     return isTheSamePosition(item, nextPosition);
   });
@@ -254,16 +247,16 @@ function calculateThePath() {
   if(isGameOver) return;
 
   // create a copy of activeCells
-  var cellsList = activeCells.slice();
+  var toDoList = activeCells.slice();
   var counter = 0;
   var steps = [];
   var cells = [];
   var path = [];
   var step;
 
-  while(cellsList.length !== 0) {
-    for (var i = 0; i < cellsList.length; i++) {
-      step = cellsList[i];
+  while(toDoList.length !== 0) {
+    for (var i = 0; i < toDoList.length; i++) {
+      step = toDoList[i];
       steps[counter] = steps[counter] || [];
       if (steps.length <= 1 ) {
         if (checkIfCanGoThere(step, enemy)) pushElem(step);
@@ -274,10 +267,10 @@ function calculateThePath() {
       }
     }
 
-    // Remvoe from the to do list
+    // Remvoe from the toDoList
     steps[counter].map(function(item){
-      for(var i = 0; i < cellsList.length; i++)
-        if(item === cellsList[i]) cellsList.splice(i, 1);
+      for(var i = 0; i < toDoList.length; i++)
+        if(item === toDoList[i]) toDoList.splice(i, 1);
     });
 
     counter++;
@@ -286,21 +279,11 @@ function calculateThePath() {
   buildThePath();
   animateTheEnemy();
 
-  function animateTheEnemy(){
-    var nextStep = path[path.length-1];
-    if(isTheSamePosition(nextStep, player)) gameOver();
-    enemy.move({
-      x: nextStep.x,
-      y: nextStep.y,
-      callback: calculateThePath
-    });
-  }
-
   function buildThePath() {
     var currentCell;
     // sort by step number
     var testList = sortCells(cells);
-    var counter = cellsList.length;
+    var counter = toDoList.length;
     var testCell;
 
     // push the last elemnt
@@ -319,6 +302,16 @@ function calculateThePath() {
       if(isTheSamePosition(currentCell, enemy) || counter < 1) break;
       counter--;
     }
+  }
+
+  function animateTheEnemy(){
+    var nextStep = path[path.length-1];
+    if(isTheSamePosition(nextStep, player)) gameOver();
+    enemy.move({
+      x: nextStep.x,
+      y: nextStep.y,
+      callback: calculateThePath
+    });
   }
 
   function pushElem(step){
